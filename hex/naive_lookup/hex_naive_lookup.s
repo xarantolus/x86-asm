@@ -11,6 +11,8 @@ _start:
     mov rdx, 1 # one byte
     syscall
 
+    lea r11, [rip+lookup_table]
+
     # Error handling: reading <= 0 bytes is an error
     cmp rax, 0
     JLE .Lloop_end
@@ -18,27 +20,11 @@ _start:
     mov al, [rip+char]
     mov bl, al
 
-    # Only the 4 lowest bits of al and bl are significant:
     and al, 0b1111
     shr bl, 4
 
-    # Now we decide whether we use '0' as starting point or 'a' for al
-    cmp al, 10
-    JGE .Lal_g10
-    add al, '0'
-    JMP .Lal_end
-    .Lal_g10:
-    add al, ('a'-10) # Since we have an offset of 10 + offset from 'a', we need to subtract 10
-    .Lal_end:
-
-    # Same for bl
-    cmp bl, 10
-    JGE .Lbl_g10
-    add bl, '0'
-    JMP .Lbl_end
-    .Lbl_g10:
-    add al, ('a'-10)
-    .Lbl_end:
+    mov al, [r11+rax]
+    mov bl, [r11+rbx]
 
     # Switch the bytes around due to endianness
     mov [output+1], al
@@ -69,6 +55,9 @@ _start:
 
 
 .section .data
+lookup_table:
+.ascii "0123456789abcdef"
+
 output:
 .space 2
 
