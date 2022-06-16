@@ -1,6 +1,15 @@
 # x86-asm
 This repository is kind of a playground for programs written in x86-64 Assembly for Linux.
 
+So what's in here?
+* [`alphabet`](alphabet/alphabet.s): Generates the alphabet in the `.data` section and then writes it to stdout
+* [`malloc`](malloc): A very bad+basic memory allocation function implementation based on the `brk` syscall
+  * The example program dynamically allocates 28 bytes for a string of `a-z`, a newline and a null terminator
+  * Then it outputs this generated string
+* [`hex`](hex): Reads bytes from stdin and outputs them in hex on stdout
+  * There's two implementations, one based on a lookup table and the other based on normal conditions
+* [`uppercase`](uppercase/naive/uppercase_naive.s): Similar to `hex`; it reads bytes from stdin and prints the uppercase variant of these bytes
+* [`exit`](exit): Basically just calls the exit syscall
 
 ### Installation/Run
 To run these programs, you need to install `gcc` and `as` (if they aren't already installed).
