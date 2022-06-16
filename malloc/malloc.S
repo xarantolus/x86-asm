@@ -1,68 +1,76 @@
 .intel_syntax noprefix
 
-.section .data
-data_page_current_offset: .8byte 0
-data_section_begin:
+.section .rodata
+error_allocating_memory: .asciz "Error while allocating memory\n"
+error_allocating_memory_len: .8byte 30
 
 .section .text
-malloc:
+print_memory_error:
+    mov rax, 1 // write
+    mov rdi, 1 // Stdout
+    lea rsi, [rip+error_allocating_memory] // buf
+    mov rdx, [rip+error_allocating_memory_len] // length
+    syscall
+
+    // Exit with exit code 42
+    mov rax, 60
+    mov rdi, [rip+error_allocating_memory_len]
+    syscall
+
+
+// This is absolutely not malloc, but it is a very minimal memory
+// Allocation wrapper. It works by increasing the "program break",
+// which is the heap of the program. It returns a pointer to the beginning
+// of the section you can write to the number of bytes you requrested in
+// rdi. The section returned may be writable even after it, but just don't do that, ok?
+// Also, this implementation exists the program on errors
+.global some_kind_of_malloc
+some_kind_of_malloc:
     // rdi (input):  number of bytes to allocate
     // rax (output): pointer to first byte of allocated memory or 0 on error
 
     push rbx
     push r12
 
-    // First of all get the start address of our data section
-    lea rax, [rip+data_section_begin]
-    // Now add the current offset
-    add rax, [rip+data_page_current_offset]
-
-    // Save the previous program break
-    mov r12, rax
-
-    // Add the newly needed bytes
-    add rax, rdi
-
-    // Also save a new current offset (old offset + newly allocated bytes)
-    add [rip+data_page_current_offset], rdi
-
+    // Save the number of bytes to allocate in rbx
     mov rbx, rdi
-    // rdi is the argument for the syscall, so rax currently is the largest address we need
-    mov rdi, rax
 
-    // call brk syscall to increase data section
-    mov rax, 0x0c
+    // Call the brk(0) syscall to get current program break (basically end of heap?)
+    mov rdi, 0
+    mov rax, 0xc
     syscall
 
-    // Now see if the syscall returned a new, larger program break (success)
-    cmp rax, r12
-    JG .Lsuccess
+    // Save previous break
+    mov r12, rax
 
-.Lfailure:
-    // It seems like an error happened. Restore our previous state by decrementing our offset
-    // again. We saved rbx for that
-    sub [rip+data_page_current_offset], rbx
+    // Now do the same thing again, but we call it with the increased size we want
+    add rax, rbx
 
-    // Return null pointer
-    mov rax, 0
-    JMP .Lcleanup_malloc
-.Lsuccess:
+    // Get the new page break
+    mov rdi, rax
+    mov rax, 0xc
+    syscall
+
+    // if we got the same break, allocation failed
+    cmp r12, rax
+    JE .Lfail
+
+    // Now rax contains the end of our program break
+    // We can subtract rbx and return that pointer, as now we can write `rbx` many bytes
+    // One thing to note here is that `brk` can give us much more than we wanted, but
+    // for ease of use we can also just do nothing and waste a lot of memory
     sub rax, rbx
-    sub rax, 1
+
+    JMP .Lcleanup_malloc
+
+.Lfail:
+    // Make sure we align our pointer to 16 bytes; calling convention
+    sub rsp, 8
+    call print_memory_error
+
+    // This part is never reached as print_memory_error exits
 
 .Lcleanup_malloc:
     pop r12
     pop rbx
     ret
-
-
-.global _start
-_start:
-    mov rdi, 0x200
-    call malloc
-
-    mov byte ptr [rax+0x1ff], 20
-
-    mov rax, 60
-    mov rdi, 1
-    syscall
