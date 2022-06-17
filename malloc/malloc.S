@@ -14,7 +14,7 @@ print_memory_error:
 
     // Exit with exit code 42
     mov rax, 60
-    mov rdi, [rip+error_allocating_memory_len]
+    mov rdi, 42
     syscall
 
 
