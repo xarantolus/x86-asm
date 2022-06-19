@@ -19,11 +19,11 @@ print_memory_error:
 
 
 // This is absolutely not malloc, but it is a very minimal memory
-// Allocation wrapper. It works by increasing the "program break",
+// allocation wrapper. It works by increasing the "program break",
 // which is the heap of the program. It returns a pointer to the beginning
 // of the section you can write to the number of bytes you requrested in
 // rdi. The section returned may be writable even after it, but just don't do that, ok?
-// Also, this implementation exists the program on errors
+// Also, this implementation exits the program on errors
 .global some_kind_of_malloc
 some_kind_of_malloc:
     // rdi (input):  number of bytes to allocate
